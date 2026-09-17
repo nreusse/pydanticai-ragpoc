@@ -44,8 +44,9 @@ General knowledge:
 
 - Rules to obey by everyone, derived from legal documents (MARisk, DORA, EU AI Act, etc.)
   Knowledge is structured into "books", each having a specific focus. Some books are relevant to everyone
-  in the company, others are only relevant for specific departments. Lookup always starts at the general
+  in the company, others are only relevant for specific departments. When consulting the rule books, lookup always starts at the general
   books, while the content may be further added onto going into the more specific ones.
+  Product-only questions can query website content directly without consulting the rule books.
   Each book is divided into chapters, subchapters etc. 
   Role: internal
   Content: ~8000 documents
@@ -76,7 +77,9 @@ Specific knowledge (sensitive data):
 
 The data source should be implemented one by one, starting with the general rules.
 Depending on the source, the retrieval scores should be evaluated against a "golden" set of questions and answers, which will then be provided as json (question, answer, source(s)).
+Golden-set citations will identify specific passages most of the time. Initial quality thresholds should be proposed in the plan and refined after baseline measurements.
 Questions can be targeted to a specific data source (vacation -> general rules, product information -> website), but it should be possible to ask questions that require multiple data sources (e.g. "check if the description of the product (website) matches the company guidelines regarding text formulations (intranet)", or "check if all requirements from (general rules) are met in this document (uploaded by the user)"). The agent should read the rules and assess for each rule.
+For rule-by-rule assessments, the agent should identify the applicable books and chapters and confirm the scope with the user before assessing each rule. Users may also specify the scope directly.
 Please suggest a retrieval approach for each data source. Include your reasoning, so that is is understandable why you favoured the approach compared to others.
 
 # Planned Data Sources
@@ -103,6 +106,11 @@ The original data must not be modified.
 - The application should be easily extensible with new data sources.
 - Evidence should be taken from the sources, if available. If the data is insufficient to answer the question, tell the user and ask how to proceed.
 
+# Logging
+
+For this POC, debugging logs may contain sensitive source passages and answers.
+Production requires stricter handling of sensitive data in logs; the production logging policy must be defined before deployment.
+
 # Tech Stack
 
 - linux (SLES 15) as operating system
@@ -110,7 +118,6 @@ The original data must not be modified.
 - podman quadlets as a service manager
 - python >= 3.11
 - uv for project management
-- uv for sbom generation
 - pytest for tests
 - fastapi for webservice
 - pydantic ai for the agent logic

@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "library-skills>=0.0.19",
     "pydantic-ai-slim>=2.44.0",
+    "weaviate-client>=4.23.1",
 ]
 
 [project.scripts]
