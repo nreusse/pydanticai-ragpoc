@@ -1,0 +1,22 @@
+[project]
+name = "pydanticai-poc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nils Reuße", email = "n.reusse@hxgn.net" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "docling-slim>=2.128.0",
+    "fastapi>=0.141.1",
+    "library-skills>=0.0.19",
+    "pydantic-ai-slim>=2.44.0",
+]
+
+[project.scripts]
+pydanticai-poc = "pydanticai_poc:main"
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
