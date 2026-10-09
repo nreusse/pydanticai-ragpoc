@@ -9,7 +9,8 @@ import asyncio
 import logging
 import re
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
 from typing import Literal
 from uuid import uuid4
 
@@ -17,12 +18,13 @@ from pydantic_ai import Agent, AgentRunResultEvent, ModelRetry, RunContext
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import FunctionToolCallEvent, PartStartEvent, TextPart
 from pydantic_ai.models import Model
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.ui import NativeEvent
 from pydantic_ai.usage import UsageLimits
 
 from .contracts import AnswerReady, Evidence, Progress, ResearchAnswer, SearchHit
 from .settings import Settings
-from .sources import Source, SourceError, SourceId
+from .sources import Source, SourceError
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ class Conversation:
     turns: list[tuple[str, str]] = field(default_factory=list)
     status: Literal["idle", "running", "completed", "failed", "cancelled"] = "idle"
     run_id: str | None = None
+    source_ids: tuple[str, ...] | None = None
 
 
 @dataclass
@@ -46,7 +49,9 @@ class RunData:
     async def search(self, source_id: str, query: str) -> list[SearchHit]:
         source = self.sources.get(source_id)
         if source is None:
-            raise ModelRetry("Unbekannte Quelle. Verwende wikipedia oder openlibrary.")
+            raise ModelRetry(
+                "Quelle für diesen Lauf nicht verfügbar. Nutze nur die aufgeführten Quellen."
+            )
         if not 1 <= len(query) <= 300:
             raise ModelRetry("Suchtext muss zwischen 1 und 300 Zeichen lang sein.")
         self.searches += 1
@@ -56,6 +61,8 @@ class RunData:
         return hits
 
     async def read(self, source_id: str, document_id: str) -> Evidence:
+        if source_id not in self.sources:
+            raise ModelRetry("Quelle für diesen Lauf nicht verfügbar.")
         if (source_id, document_id) not in self.found:
             raise ModelRetry("Zuerst suchen; nur IDs aus den Suchtreffern lesen.")
         for row in self.evidence.values():
@@ -111,7 +118,8 @@ def validate_answer(answer: ResearchAnswer, evidence: dict[str, Evidence]) -> Re
 
 
 INSTRUCTIONS = """Du bist ein lesender Rechercheagent. Antworte kurz auf Deutsch.
-Quellen: wikipedia = deutsche Artikel; openlibrary = Buchmetadaten, KEINE Buchvolltexte.
+Die verfügbaren Quellen werden für diesen Lauf separat angegeben.
+Nutze ausschließlich diese Quellen.
 Suche über search_source, lies passende Treffer über read_source, dann antworte.
 Beachte ausdrücklich genannte Quellen. Suche deutsche Artikel auf Deutsch.
 Übersetze Eigennamen, Buchtitel und angegebene Suchbegriffe NICHT.
@@ -148,13 +156,25 @@ def build_agent(model: Model) -> Agent[RunData, str]:
         },
     )
 
-    @agent.tool(sequential=True)
+    @agent.instructions
+    def available_sources(ctx: RunContext[RunData]) -> str:
+        return "Verfügbare Quellen für diesen Lauf:\n" + "\n".join(
+            f"- {key}: {source.name}" for key, source in ctx.deps.sources.items()
+        )
+
+    async def prepare_source_tool(ctx: RunContext[RunData], tool: ToolDefinition) -> ToolDefinition:
+        # Copy nested schema: never mutate a shared tool definition between runs.
+        schema = deepcopy(tool.parameters_json_schema)
+        schema["properties"]["source_id"]["enum"] = list(ctx.deps.sources)
+        return replace(tool, parameters_json_schema=schema)
+
+    @agent.tool(sequential=True, prepare=prepare_source_tool)
     async def search_source(
         ctx: RunContext[RunData],
-        source_id: SourceId,
+        source_id: str,
         query: str,
     ) -> list[SearchHit]:
-        """Search wikipedia or openlibrary. Returns IDs that read_source can read."""
+        """Search an available source. Returns IDs that read_source can read."""
         await ctx.emit(Progress(message=f"Suche in {source_id}: {query}"))
         try:
             return await ctx.deps.search(source_id, query)
@@ -164,10 +184,10 @@ def build_agent(model: Model) -> Agent[RunData, str]:
                 "Quelle nicht verfügbar. Andere Quelle nutzen oder Grenze melden."
             ) from exc
 
-    @agent.tool(sequential=True)
+    @agent.tool(sequential=True, prepare=prepare_source_tool)
     async def read_source(
         ctx: RunContext[RunData],
-        source_id: SourceId,
+        source_id: str,
         document_id: str,
     ) -> Evidence:
         """Read a document found by search_source. Only this text counts as evidence."""
@@ -230,9 +250,22 @@ class ResearchService:
             conversation.status = "cancelled"
 
     async def stream(
-        self, conversation: Conversation, run_id: str, question: str
+        self,
+        conversation: Conversation,
+        run_id: str,
+        question: str,
+        sources: dict[str, Source] | None = None,
     ) -> AsyncGenerator[NativeEvent, None]:
-        data = RunData(self.settings, self.sources)
+        effective = dict(self.sources if sources is None else sources)
+        if not effective:
+            self.release(conversation, run_id)
+            raise ValueError("Bitte wähle mindestens eine verfügbare Quelle.")
+        source_ids = tuple(sorted(effective))
+        # A changed source scope must not carry answers from deselected sources.
+        if conversation.source_ids != source_ids:
+            conversation.turns.clear()
+            conversation.source_ids = source_ids
+        data = RunData(self.settings, effective)
         # Keep compact plain-text turns, not old tool payloads or stale evidence IDs.
         history = "\n".join(f"Nutzer: {q}\nAntwort: {a}" for q, a in conversation.turns)[-1200:]
         prompt = f"Bisheriger Verlauf (nur Kontext):\n{history}\n\nAktuelle Frage: {question}"

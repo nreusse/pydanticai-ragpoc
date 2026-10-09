@@ -10,14 +10,12 @@ import re
 from collections.abc import Mapping
 from html import unescape
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol
 from urllib.parse import quote
 
 import httpx
 
 from .contracts import Evidence, SearchHit
-
-SourceId = Literal["wikipedia", "openlibrary"]
 
 
 class SourceError(Exception):

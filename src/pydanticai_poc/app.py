@@ -31,6 +31,7 @@ TEMPLATES = Jinja2Templates(directory=ROOT / "templates")
 class ChatInput(BaseModel):
     conversation_id: UUID
     message: str = Field(min_length=1, max_length=1200)
+    source_ids: list[str] | None = Field(default=None, max_length=100)
 
 
 class SessionOutput(BaseModel):
@@ -49,6 +50,18 @@ def service_from(request: Request) -> ResearchService:
 
 
 Service = Annotated[ResearchService, Depends(service_from)]
+
+
+def sources_for_user(research: Service) -> dict[str, Source]:
+    """Server-side permission boundary; the local POC user can access all sources.
+
+    Later resolve an authenticated user here and return only authorized adapters.
+    Never take permissions or a user identity from the chat payload.
+    """
+    return dict(research.sources)
+
+
+AllowedSources = Annotated[dict[str, Source], Depends(sources_for_user)]
 
 
 def create_app(settings: Settings | None = None, service: ResearchService | None = None) -> FastAPI:
@@ -108,6 +121,10 @@ def create_app(settings: Settings | None = None, service: ResearchService | None
             busy=research.active_run is not None,
         )
 
+    @app.get("/api/sources")
+    async def available_sources(allowed: AllowedSources) -> list[dict[str, str]]:
+        return [{"id": key, "name": source.name} for key, source in allowed.items()]
+
     @app.post("/api/conversations")
     async def new_conversation(research: Service) -> SessionOutput:
         try:
@@ -116,13 +133,21 @@ def create_app(settings: Settings | None = None, service: ResearchService | None
             raise HTTPException(409, str(exc)) from exc
 
     @app.post("/api/chat", response_class=StreamingResponse)
-    async def chat(payload: ChatInput, research: Service) -> StreamingResponse:
+    async def chat(
+        payload: ChatInput, research: Service, allowed: AllowedSources
+    ) -> StreamingResponse:
         question = payload.message.strip()
         if not question:
             raise HTTPException(422, "Bitte gib eine Frage ein.")
         conversation = research.conversations.get(str(payload.conversation_id))
         if conversation is None:
             raise HTTPException(404, "Unterhaltung abgelaufen. Bitte starte eine neue.")
+        selected = list(allowed) if payload.source_ids is None else payload.source_ids
+        if not selected:
+            raise HTTPException(422, "Bitte wähle mindestens eine verfügbare Quelle.")
+        if any(key not in allowed for key in selected):
+            raise HTTPException(403, "Mindestens eine gewählte Quelle ist nicht verfügbar.")
+        effective = {key: allowed[key] for key in selected}
         try:
             run_id = research.reserve(conversation)
         except RuntimeError as exc:
@@ -130,7 +155,7 @@ def create_app(settings: Settings | None = None, service: ResearchService | None
         encoder = AGUIEventStream(thread_id=conversation.id, run_id=run_id)
 
         async def body() -> AsyncIterator[str]:
-            native = research.stream(conversation, run_id, question)
+            native = research.stream(conversation, run_id, question, effective)
             transformed = cast(AsyncGenerator[BaseEvent, None], encoder.transform_stream(native))
             try:
                 async for event in encoder.encode_stream(transformed):

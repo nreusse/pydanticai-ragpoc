@@ -13,7 +13,7 @@
     <section class="intro">
       <p class="eyebrow">WISSEN MIT BELEGEN</p>
       <h1>Eine Frage. Nachvollziehbare Quellen.</h1>
-      <p>Recherchiere in Wikipedia und Open Library. Sieh die Arbeitsschritte und prüfe die Fundstellen.</p>
+      <p>Recherchiere in deinen ausgewählten Quellen. Sieh die Arbeitsschritte und prüfe die Fundstellen.</p>
       <div class="tags"><span>Nur lesend</span><span>{{ model }}</span>
       <span>{% if source_mode == 'fixture' %}Demo · gespeicherte Daten{% else %}Öffentliche Live-Quellen{% endif %}</span></div>
     </section>
@@ -22,7 +22,7 @@
         <div class="section-head"><h2>Recherche</h2><button id="reset" class="secondary">Neue Unterhaltung</button></div>
         <div id="messages" aria-live="polite"><div class="empty" id="empty"><span>↗</span><h3>Was möchtest du herausfinden?</h3><p>Open Library liefert Buchmetadaten, keine Volltexte.</p></div></div>
         <div class="examples"><button data-question="Wer war Franz Kafka?">Franz Kafka</button><button data-question="Finde das Buch Die Verwandlung in Open Library.">Die Verwandlung</button></div>
-        <form id="form"><label for="question">Deine Frage</label><textarea id="question" maxlength="1200" rows="3" placeholder="Zum Beispiel: Wer war Franz Kafka?" required></textarea><div class="form-footer"><small>Antworten können Fehler enthalten. Prüfe die Belege.</small><button id="send" type="submit">Recherchieren ↗</button><button id="stop" type="button" class="secondary" hidden>Abbrechen</button></div></form>
+        <form id="form"><fieldset id="source-selection"><legend>Quellen für diese Recherche</legend><div id="source-options">Quellen werden geladen …</div><small>Bei geänderter Auswahl beginnt der Gesprächskontext neu.</small></fieldset><label for="question">Deine Frage</label><textarea id="question" maxlength="1200" rows="3" placeholder="Zum Beispiel: Wer war Franz Kafka?" required></textarea><div class="form-footer"><small>Antworten können Fehler enthalten. Prüfe die Belege.</small><button id="send" type="submit">Recherchieren ↗</button><button id="stop" type="button" class="secondary" hidden>Abbrechen</button></div></form>
       </section>
       <aside>
         <section class="panel"><p class="eyebrow">BEARBEITUNG</p><h2 id="state">Bereit</h2><ol id="steps" aria-live="polite"><li>Stelle eine Frage, um die Recherche zu starten.</li></ol></section>

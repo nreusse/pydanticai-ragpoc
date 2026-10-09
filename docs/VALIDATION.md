@@ -7,7 +7,7 @@ Die abschließenden Modellergebnisse stehen in `evaluation-results.json`.
 ## Was bereits geprüft ist
 
 - Python 3.11 mit den Versionen aus uv.lock.
-- 22 bestandene Offline-Tests für Quellenformate, lesbare Auszüge, Quellenvalidierung,
+- 25 bestandene Offline-Tests für Quellenformate, lesbare Auszüge, Quellenvalidierung,
   Gesprächsverlauf, AG-UI/SSE, Busy-Zustand, Zeit-/Werkzeuglimits, Modellfehler
   und Aufräumen bei Abbruch. Tests verwenden FunctionModel/TestModel und MockTransport.
 - Ruff, Pyrefly einschließlich Prüfskripten und JavaScript-Syntaxprüfung.
@@ -102,8 +102,8 @@ Im Code dem Weg `app.py` → `ResearchService.stream` → `search_source`/`read_
 
 ## Erweiterungsgrenzen und verbleibende Grenzen
 
-- Weitere Quelle: Adapter mit `search/read`, Registrierung und Ergänzung der
-  erlaubten Quellen-IDs (`SourceId` in `sources.py`). Keine Änderung der
+- Weitere Quelle: Adapter mit `search/read` und Registrierung. Prompt und
+  Werkzeug-Schema werden aus der wirksamen Quellenliste erzeugt. Keine Änderung der
   Recherche-Schleife erforderlich.
 - Berechtigungen: in `RunData.search/read` vor dem Adapterzugriff und vor
   Rückgabe von gespeicherten Belegen prüfen. Das heutige UUID-Gespräch ist keine
@@ -127,3 +127,21 @@ Die lokale Demo-Suche verwendet Wortüberschneidung und ist kein echter Suchinde
 Die Anwendung garantiert keine vollständige Recherche über ganze Dokumentbestände.
 
 Referenz für den Denkmodus: [Ollama OpenAI-Kompatibilität](https://docs.ollama.com/api/openai-compatibility).
+
+## Dynamische Quellenwahl
+
+`GET /api/sources` liefert nur die durch `sources_for_user` erlaubten Quellen.
+Im Einzelplatz-POC sind dies alle registrierten Adapter; eine echte Anmeldung
+und Rollenverwaltung sind weiterhin nicht implementiert. `POST /api/chat` prüft
+`source_ids` gegen dieselbe serverseitige Grenze. Nicht verfügbare IDs ergeben
+403, eine leere Auswahl 422; ohne Auswahlfeld gelten alle erlaubten Quellen.
+Nur die ausgewählten Adapter gelangen in `RunData`. Dynamische Agentenanweisungen
+und vorbereitete Werkzeug-Schemas werden daraus pro Lauf erzeugt. Suche und Lesen
+prüfen die Verfügbarkeit zusätzlich im Python-Code. Bei geänderter Quellenliste
+wird der alte Gesprächskontext verworfen; bereits angezeigte Nachrichten bleiben
+im Browser sichtbar. Berechtigungen werden zu Beginn jeder Anfrage aufgelöst;
+ein Entzug während eines laufenden Jobs ist damit noch nicht umgesetzt.
+
+Zusätzliche Tests prüfen Quellenfilterung, abgelehnte Auswahl, gesperrte Lesezugriffe,
+getrennte Werkzeug-Schemas/Anweisungen und das Zurücksetzen des Gesprächskontexts.
+Die frühere Granite-Evaluation ist keine erneute Modellabnahme dieser Erweiterung.

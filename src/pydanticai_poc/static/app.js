@@ -5,6 +5,37 @@ let controller = null;
 let receivedAnswer = false;
 let finished = false;
 
+function selectedSources() {
+  return [...document.querySelectorAll("[data-source]:checked")].map((el) => el.value);
+}
+
+async function loadSources() {
+  $("send").disabled = true;
+  try {
+    const response = await fetch("/api/sources");
+    if (!response.ok) throw new Error("Quellen konnten nicht geladen werden.");
+    const records = await response.json();
+    $("source-options").replaceChildren();
+    records.forEach((record) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = record.id;
+      input.dataset.source = "";
+      input.checked = true;
+      input.addEventListener("change", () => busy(false));
+      label.append(input, document.createTextNode(" " + record.name));
+      $("source-options").append(label);
+    });
+    if (!records.length) $("source-options").textContent = "Keine Quellen verfügbar.";
+    busy(false);
+  } catch (error) {
+    $("source-options").textContent = error.message;
+  }
+}
+
+loadSources();
+
 function message(role, text, error = false) {
   $("empty")?.remove();
   const row = document.createElement("div");
@@ -20,7 +51,8 @@ function message(role, text, error = false) {
 }
 
 function busy(value) {
-  $("send").disabled = value;
+  $("send").disabled = value || !selectedSources().length;
+  document.querySelectorAll("[data-source]").forEach((el) => { el.disabled = value; });
   $("question").disabled = value;
   $("reset").disabled = value;
   $("stop").hidden = !value;
@@ -112,7 +144,7 @@ async function consume(response) {
 $("form").addEventListener("submit", async (submit) => {
   submit.preventDefault();
   const question = $("question").value.trim();
-  if (!question || controller) return;
+  if (!question || controller || !selectedSources().length) return;
   controller = new AbortController();
   busy(true);
   receivedAnswer = false;
@@ -129,7 +161,7 @@ $("form").addEventListener("submit", async (submit) => {
     }
     const response = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversation_id: conversationId, message: question }),
+      body: JSON.stringify({ conversation_id: conversationId, message: question, source_ids: selectedSources() }),
       signal: controller.signal,
     });
     if (!response.ok) {

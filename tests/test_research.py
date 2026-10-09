@@ -32,7 +32,7 @@ async def test_only_discovered_documents_and_document_limit():
     assert await data.read("wikipedia", "1") is first
     with pytest.raises(ModelRetry, match="Dokumentlimit"):
         await data.read("wikipedia", "2")
-    with pytest.raises(ModelRetry, match="Unbekannte Quelle"):
+    with pytest.raises(ModelRetry, match="Quelle für diesen Lauf nicht verfügbar"):
         await data.search("http://localhost", "test")
 
 
@@ -122,3 +122,50 @@ async def test_disconnect_after_answer_preserves_completed_turn(service: Researc
     assert conversation.status == "completed"
     assert len(conversation.turns) == 1
     assert service.active_run is None
+
+
+async def test_unavailable_source_cannot_be_searched_or_read():
+    sources = fixture_sources()
+    data = RunData(Settings(_env_file=None), {"wikipedia": sources["wikipedia"]})
+    with pytest.raises(ModelRetry, match="nicht verfügbar"):
+        await data.search("openlibrary", "Kafka")
+    # Even an old/discovered ID must not bypass the current source scope.
+    from pydanticai_poc.contracts import SearchHit
+
+    data.found[("openlibrary", "OL1W")] = SearchHit(
+        source_id="openlibrary",
+        document_id="OL1W",
+        title="Old",
+        url="https://example.com",
+        snippet="",
+    )
+    with pytest.raises(ModelRetry, match="nicht verfügbar"):
+        await data.read("openlibrary", "OL1W")
+
+
+async def test_instructions_and_schema_are_isolated_per_run(service: ResearchService):
+    from pydantic_ai.models.function import FunctionModel
+
+    seen = []
+
+    async def inspect(messages, info):
+        seen.append(info)
+        yield "Keine Belege verfügbar."
+
+    conversation = service.new_conversation()
+    with service.agent.override(model=FunctionModel(stream_function=inspect)):
+        for key in ("wikipedia", "openlibrary"):
+            conversation.turns = [("alte Frage", "vertrauliche alte Antwort")]
+            run_id = service.reserve(conversation)
+            stream = service.stream(conversation, run_id, "Kafka", {key: service.sources[key]})
+            # The output validator retries because this model never searches.
+            with pytest.raises(RuntimeError):
+                _ = [event async for event in stream]
+            assert not conversation.turns
+            for info in seen:
+                assert f"- {key}:" in info.instructions
+                other = "openlibrary" if key == "wikipedia" else "wikipedia"
+                assert f"- {other}:" not in info.instructions
+                for tool in info.function_tools:
+                    assert tool.parameters_json_schema["properties"]["source_id"]["enum"] == [key]
+            seen.clear()

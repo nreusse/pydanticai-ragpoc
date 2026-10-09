@@ -44,6 +44,12 @@ sie ersetzt keine Live-Quellensuche. Gespräche gehen bei Neustart verloren.
 5. PydanticAI-Ereignisse werden durch den offiziellen AG-UI-Encoder in SSE übersetzt.
    Die Oberfläche zeigt Statusmeldungen und die validierte Antwort samt Auszügen.
 
+Die Quellenwahl im Formular wird für jeden Lauf mit den serverseitig erlaubten
+Quellen abgeglichen. `sources_for_user` in `app.py` ist die spätere Anbindung an
+die Anmeldung; heute darf der lokale Nutzer alle registrierten Quellen sehen.
+Prompt, Werkzeug-Schema und Python-Zugriff verwenden nur die wirksame Auswahl.
+Bei geänderter Auswahl wird der Antwortkontext zurückgesetzt.
+
 Die Prüfung erkennt erfundene Beleg-IDs, garantiert aber nicht die inhaltliche
 Richtigkeit jeder Modellbehauptung. Quellen prüfen bleibt notwendig.
 
