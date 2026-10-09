@@ -1,3 +1,5 @@
+> Historischer Stand: Für den aktuell abgestimmten Web-POC gelten [POC-SCOPE.md](POC-SCOPE.md) und [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). Die folgenden Anforderungen sind keine zusätzlichen POC-Pflichten.
+
 # Implementation plan: local bank knowledge assistant
 
 ## 1. Purpose and delivery contract

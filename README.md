@@ -1,3 +1,7 @@
+Aktuelle Entwicklungsumgebung: [docs/SETUP.md](docs/SETUP.md).
+
+> Historischer Stand: Für den aktuell abgestimmten Web-POC gelten [POC-SCOPE.md](POC-SCOPE.md) und [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). Die folgenden Anforderungen sind keine zusätzlichen POC-Pflichten.
+
 # Goal
 
 Generate a building plan for an inhouse coding agent that can act on the real data and implement according to the plan.
