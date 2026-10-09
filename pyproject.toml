@@ -37,7 +37,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [tool.pyrefly]
-project-includes = ["src", "tests"]
+project-includes = ["src", "tests", "scripts"]
 python-version = "3.11"
 
 [dependency-groups]

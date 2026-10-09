@@ -1,11 +1,12 @@
 # Umsetzungsplan: lokaler Rechercheagent als Web-POC
 
-Stand: 9. Oktober 2026. Status: Projektumgebung eingerichtet; Anwendung noch nicht implementiert.
+Stand: 9. Oktober 2026. Status: erster Web-POC implementiert;
+Validierung und verbleibende Grenzen siehe [docs/VALIDATION.md](docs/VALIDATION.md).
 
-Einrichtungsanleitung: [docs/SETUP.md](docs/SETUP.md). pyproject.toml, Python-3.11-Pin,
-uv.lock, Entwicklungswerkzeuge und die FastAPI-/PydanticAI-Skill-Verknüpfungen sind
-vorbereitet. Einstellungen, Lifespan, Health-Endpunkt und Webanwendung aus Paket A
-bleiben umzusetzen.
+Die folgenden Arbeitspakete dokumentieren die vorgesehene Vorgehensweise und
+Abnahmekriterien. Sie sind keine pauschale Bestätigung aller Qualitätsziele.
+Aktueller Start: [README.md](README.md); Umgebung: [docs/SETUP.md](docs/SETUP.md).
+
 
 ## 1. Auftrag und verbindliche Abgrenzung
 
@@ -73,9 +74,8 @@ wählen, die sich anhand eines konkreten Anfrageablaufs am einfachsten erklären
 
 ## 2. Ausgangslage und technische Entscheidungen
 
-Das Repository enthält derzeit ein Python-Paket mit einer Hello-World-Funktion,
-eine eingerichtete uv-Projektumgebung und Planungsdokumente. Ein Web-Backend,
-eine Oberfläche und Tests sind noch nicht vorhanden.
+Zum Beginn der Umsetzung enthielt das Repository ein Hello-World-Paket und die
+uv-Projektumgebung. Inzwischen sind Backend, Oberfläche und Offline-Tests ergänzt.
 
 Docling und Weaviate wurden aus den Projektabhängigkeiten entfernt. Vorhandene
 Weaviate-Skills und sonstige Nutzerdateien bleiben erhalten.
@@ -85,7 +85,7 @@ Weaviate-Skills und sonstige Nutzerdateien bleiben erhalten.
 | Sprache | Python 3.11 als Entwicklungs- und Prüfversion |
 | Projekt | uv; uv.lock für reproduzierbare Installation commitfähig erzeugen |
 | Agent | PydanticAI; OpenAI-kompatibler Chat-Completions-Zugriff |
-| Modellruntime | Ollama, zunächst quantisiertes Qwen3 1.7B |
+| Modellruntime | Ollama, zunächst quantisiertes Granite 4.2 3B (`granite4.2:3b`) |
 | Web | FastAPI async, Uvicorn, ein Worker |
 | UI | Jinja2, lokal ausgeliefertes JavaScript und CSS, keine CDN-Abhängigkeiten |
 | Protokoll | PydanticAI AG-UI-Adapter, SSE als Transport |

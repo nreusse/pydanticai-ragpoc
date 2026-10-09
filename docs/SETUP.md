@@ -28,11 +28,12 @@ uv run pytest
 ```
 
 Ruff und Pyrefly prüfen Anwendungscode; mitgelieferte Skill-Skripte sind davon
-getrennt. Tests werden unter `tests/` angelegt. Aktuell gibt es noch keine Tests;
-pytest meldet daher „keine Tests gesammelt“ (Exitcode 5). Importprüfungen für
-FastAPI, PydanticAI und AG-UI sowie Ruff und Pyrefly wurden bei der Einrichtung
-mit Python 3.11 erfolgreich ausgeführt. Die Webanwendung und das lokale Modell
-sind noch nicht eingerichtet.
+getrennt. Tests liegen unter `tests/`; die Standardsuite ist offline. Die Webanwendung
+startet mit `uv run pydanticai-poc` oder mit
+`uv run uvicorn pydanticai_poc.app:app --host 127.0.0.1 --port 8000 --workers 1`.
+Ollama muss separat laufen und `granite4.2:3b` bereitstellen. `.env.example`
+dokumentiert die Einstellungen. `/api/health` prüft die Anwendung, nicht die
+Erreichbarkeit des Modells.
 
 Runtime-Abhängigkeiten: FastAPI, httpx, Jinja2, pydantic-ai-slim mit `openai`- und
 `ag-ui`-Extras, pydantic-settings, Uvicorn. Entwicklungswerkzeuge: library-skills,

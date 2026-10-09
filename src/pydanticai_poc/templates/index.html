@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quellenwerk · Recherche</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/">◈ Quellenwerk</a><span>LOKALER RECHERCHE-POC</span></header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">WISSEN MIT BELEGEN</p>
+      <h1>Eine Frage. Nachvollziehbare Quellen.</h1>
+      <p>Recherchiere in Wikipedia und Open Library. Sieh die Arbeitsschritte und prüfe die Fundstellen.</p>
+      <div class="tags"><span>Nur lesend</span><span>{{ model }}</span>
+      <span>{% if source_mode == 'fixture' %}Demo · gespeicherte Daten{% else %}Öffentliche Live-Quellen{% endif %}</span></div>
+    </section>
+    <div class="workspace">
+      <section class="chat" aria-label="Unterhaltung">
+        <div class="section-head"><h2>Recherche</h2><button id="reset" class="secondary">Neue Unterhaltung</button></div>
+        <div id="messages" aria-live="polite"><div class="empty" id="empty"><span>↗</span><h3>Was möchtest du herausfinden?</h3><p>Open Library liefert Buchmetadaten, keine Volltexte.</p></div></div>
+        <div class="examples"><button data-question="Wer war Franz Kafka?">Franz Kafka</button><button data-question="Finde das Buch Die Verwandlung in Open Library.">Die Verwandlung</button></div>
+        <form id="form"><label for="question">Deine Frage</label><textarea id="question" maxlength="1200" rows="3" placeholder="Zum Beispiel: Wer war Franz Kafka?" required></textarea><div class="form-footer"><small>Antworten können Fehler enthalten. Prüfe die Belege.</small><button id="send" type="submit">Recherchieren ↗</button><button id="stop" type="button" class="secondary" hidden>Abbrechen</button></div></form>
+      </section>
+      <aside>
+        <section class="panel"><p class="eyebrow">BEARBEITUNG</p><h2 id="state">Bereit</h2><ol id="steps" aria-live="polite"><li>Stelle eine Frage, um die Recherche zu starten.</li></ol></section>
+        <section class="panel"><p class="eyebrow">QUELLEN</p><h2>Fundstellen</h2><div id="sources"><p class="muted">Hier erscheinen die Belege der letzten Antwort.</p></div></section>
+      </aside>
+    </div>
+    <footer>Verlauf bleibt nur im Arbeitsspeicher · Ein Modelllauf gleichzeitig · Keine Schreibaktionen</footer>
+  </main>
+</body>
+</html>

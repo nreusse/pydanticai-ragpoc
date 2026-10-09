@@ -3,8 +3,7 @@
 Stand: 9. Oktober 2026
 
 Dieses Dokument hält den aktuellen Abstimmungsstand fest. Es beschreibt den
-vereinbarten Scope sowie Architekturvorschläge und offene Entscheidungen. Es ist
-kein Implementierungs- oder Testbericht.
+vereinbarten Scope sowie Architekturvorschläge und offene Entscheidungen. Der Implementierungs- und Prüfstand ist separat in docs/VALIDATION.md dokumentiert.
 
 README.md und PLAN.md enthalten einen früheren, umfangreicheren Plan. Für die
 Abgrenzung des jetzt besprochenen POC ist dieses Dokument maßgeblich. Der ausführbare Arbeitsplan steht in IMPLEMENTATION-PLAN.md. Die älteren
@@ -124,9 +123,8 @@ notwendige Laufzeitdienste dürfen dort keine externen Dienste voraussetzen. Die
 
 ## Modell und Ressourcen
 
-Als Startpunkt wurde Ollama mit einer quantisierten Variante von Qwen3 1.7B
-vorgeschlagen. Das ist noch keine bestätigte Modellentscheidung und keine
-Leistungszusage. Geschwindigkeit, Speicherbedarf, Antwortqualität und zuverlässige
+Der Nutzer hat Ollama und Granite 4.2 3B (`granite4.2:3b`) bereitgestellt. Dieses
+Modell ist der aktuelle POC-Standard; daraus folgt keine Leistungszusage. Geschwindigkeit, Speicherbedarf, Antwortqualität und zuverlässige
 Werkzeugaufrufe müssen früh auf dem MacBook geprüft werden.
 
 Für die begrenzten Ressourcen sind zunächst vorgesehen:
@@ -163,7 +161,7 @@ ausdrücklich vereinbarter Bestandteil.
 - httpx für asynchrone Quellenzugriffe; pydantic-settings für Konfiguration.
 - pytest und pytest-asyncio für Tests, Ruff für Linting und Formatierung,
   Pyrefly für Typechecks.
-- Ollama als lokale Modellruntime; Modellstartpunkt Qwen3 1.7B, quantisiert.
+- Ollama als lokale Modellruntime; Modellstartpunkt Granite 4.2 3B (`granite4.2:3b`), quantisiert.
 - Gesprächsverlauf im Arbeitsspeicher; Verlust bei Neustart ist im POC akzeptiert.
 - Keine Datenbank, kein Broker und keine Vektordatenbank im POC.
 
@@ -181,10 +179,11 @@ Referenzen: [PydanticAI UI Event Streams](https://pydantic.dev/docs/ai/integrati
 
 ## Noch offen
 
-- Bestätigung der zweiten Quelle nach Live-Smoke-Test: Open Library ist die
-  Planvorgabe; für den POC werden Buchmetadaten, keine Buchvolltexte, verwendet.
-- Lokale Modellqualität und Laufzeit nach Praxistest.
-- Abhängigkeiten und konkrete APIs nach Prüfung der gewählten Paketversionen.
+- Open Library ist durch den Live-Smoke-Test als zweite Quelle bestätigt;
+  der POC verwendet Buchmetadaten, keine Buchvolltexte.
+- Weitere Modellqualität über die dokumentierten Praxistests hinaus.
+- Abhängigkeiten und konkrete APIs sind über uv.lock und die dokumentierten
+  Prüfungen festgehalten.
 
 Architekturabgleich, Testfälle, Umsetzungsschritte und Abnahmekriterien sind im
 IMPLEMENTATION-PLAN.md beschrieben. Es bestehen keine blockierenden fachlichen

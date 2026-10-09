@@ -1,0 +1,56 @@
+{
+  "model": "granite4.2:3b",
+  "results": [
+    {
+      "case": 1,
+      "ok": false,
+      "seconds": 120.01
+    },
+    {
+      "case": 2,
+      "ok": true,
+      "seconds": 25.34
+    },
+    {
+      "case": 3,
+      "ok": true,
+      "seconds": 26.11
+    },
+    {
+      "case": 4,
+      "ok": false,
+      "seconds": 72.73,
+      "error": "Exceeded maximum output retries (1)"
+    },
+    {
+      "case": 5,
+      "ok": true,
+      "seconds": 20.93
+    },
+    {
+      "case": 6,
+      "ok": true,
+      "seconds": 28.35
+    },
+    {
+      "case": 7,
+      "ok": true,
+      "seconds": 29.3
+    },
+    {
+      "case": 8,
+      "ok": true,
+      "seconds": 20.52
+    },
+    {
+      "case": 9,
+      "ok": true,
+      "seconds": 27.18
+    },
+    {
+      "case": 10,
+      "ok": true,
+      "seconds": 30.71
+    }
+  ]
+}

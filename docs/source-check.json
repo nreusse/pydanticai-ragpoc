@@ -1,0 +1,16 @@
+[
+  {
+    "source": "wikipedia",
+    "ok": true,
+    "hits": 3,
+    "title": "Franz Kafka",
+    "url": "https://de.wikipedia.org/w/index.php?oldid=269458424"
+  },
+  {
+    "source": "openlibrary",
+    "ok": true,
+    "hits": 3,
+    "title": "Metamorphosis",
+    "url": "https://openlibrary.org/works/OL498556W"
+  }
+]

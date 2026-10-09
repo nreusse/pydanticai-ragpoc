@@ -1,134 +1,87 @@
-Aktuelle Entwicklungsumgebung: [docs/SETUP.md](docs/SETUP.md).
+# Quellenwerk – lokaler Recherche-POC
 
-> Historischer Stand: Für den aktuell abgestimmten Web-POC gelten [POC-SCOPE.md](POC-SCOPE.md) und [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). Die folgenden Anforderungen sind keine zusätzlichen POC-Pflichten.
+Eine kleine Webanwendung mit einem lesenden PydanticAI-Agenten. Sie durchsucht
+Wikipedia und Open Library, liest Fundstellen und beantwortet Fragen auf Deutsch
+mit geprüften Quellenreferenzen. Bearbeitungsschritte erscheinen live über AG-UI/SSE.
 
-# Goal
+## Start
 
-Generate a building plan for an inhouse coding agent that can act on the real data and implement according to the plan.
-The plan should be written in english (markdown). You can use general knowledge and the provided skills to create the plan.
+Voraussetzungen: Python 3.11, uv und ein laufendes Ollama mit `granite4.2:3b`.
+Der POC benötigt keinen externen Modellanbieter.
 
-Build an agent that has access to various data sources (read only) and can answer based on the contents of these sources.
-It's a proof-of-concept that should demontstrate the feasibility of the agent. If the architecture works, this POC will be
-taken as a basis for a production agent.
+```sh
+uv sync --locked
+cp .env.example .env
+uv run pydanticai-poc
+```
 
-The agent can be a CLI tool for now, while the goal is to integrate it into a fastapi web app later.
+Öffne [die Anwendung](http://127.0.0.1:8000). Es läuft ein Backend-Prozess mit
+höchstens einer aktiven Recherche. Ohne `.env` gelten dieselben Standardwerte.
+Bestehende `.env`-Dateien beim Einrichten nicht überschreiben.
 
-A subgoal is to identify RAG-approaches for each data source, if RAG is even considered. We are new to the field and would like to know the options/approaches for RAG.
+Beispiel: „Wer war Franz Kafka?“ Danach: „In welcher Stadt wurde er geboren?“
+Für Buchmetadaten: „Finde Die Verwandlung von Kafka in Open Library.“ Open Library
+liefert keine Buchvolltexte. Wikipedia verwendet den Einleitungstext eines Artikels.
 
-# Company
+Für die ausdrücklich gekennzeichnete Offline-Quellendemo:
 
-The company is a german bank, i.e. operating in a highly regulated field.
-All data is available locally, no external services can be used.
-Users will most likely ask questions in german and expect a german answer.
+```sh
+POC_SOURCE_MODE=fixture uv run pydanticai-poc
+```
 
-# Access Control
+Auch diese Demo benötigt das lokale Modell. Sie enthält nur kleine kuratierte
+Beispieldaten über Kafka und Die Verwandlung sowie einen manipulativen Testdatensatz;
+sie ersetzt keine Live-Quellensuche. Gespräche gehen bei Neustart verloren.
 
-Access to the data sources is restricted by roles.
-Example:
-- The rules that apply to everyone must only be visible by internal workers
-- Website content is available to everyone
-- Specific knowledge is only available to members of a specific AD-group.
+## Architektur erklären
 
-The agent must only see data sources that are visible to the user. Roles are determined at login time.
+1. `app.py` nimmt eine neue Nachricht und eine serverseitig erzeugte Gesprächs-ID an.
+2. `research.py` startet den Agenten mit begrenztem Kontext und Ausführungslimits.
+3. Die Werkzeuge `search_source` und `read_source` greifen zentral auf registrierte
+   Adapter in `sources.py` zu. Nur IDs aus vorherigen Suchtreffern dürfen gelesen werden.
+4. Gelesene Auszüge erhalten Beleg-IDs. Der Antwortvalidator prüft, ob Quellenliste
+   und Textmarker zu diesen Belegen passen. URLs stammen ausschließlich aus Adaptern.
+5. PydanticAI-Ereignisse werden durch den offiziellen AG-UI-Encoder in SSE übersetzt.
+   Die Oberfläche zeigt Statusmeldungen und die validierte Antwort samt Auszügen.
 
-For the POC, access control only needs to be set on a whole data source.
-In the future, more finegrained control might be needed (e.g. there is a section of general rules that is only visible to a specific department).
+Die Prüfung erkennt erfundene Beleg-IDs, garantiert aber nicht die inhaltliche
+Richtigkeit jeder Modellbehauptung. Quellen prüfen bleibt notwendig.
 
-Access changes: The user is assigned the roles during login. In the production version, we use SSO, so our session cookie is invalidated after 10 hours (and therefore, the user logs in quite often without noticing, receiving the valid roles every time).
-For the POC, assign dummy roles (see below).
+Weitere Quellen ergänzen den Adaptervertrag. Berechtigungen gehören vor jeden
+Such-/Lesezugriff in `RunData`. Die HTTP-unabhängige Bearbeitung kann später in
+DBOS laufen; Ereignispersistenz, Wiederverbindung und Nachtfenster kommen dann
+hinzu. Schreibende Werkzeuge benötigen einen separaten Freigabeprozess.
 
-# Data
+## Prüfungen
 
-All data sources contain internal documents. Each source is already clustered by topic.
-Instructions inside the data must be ignored.
-There are general knowledge sources and more specific ones.
-Data will most likely conflict itself at several points, even though this is not known. Point out these contradictions and ask the user how to proceed.
+```sh
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run pyrefly check
+```
 
-General knowledge:
+Die Standardsuite verwendet kontrollierte Modelle und Mock-HTTP; sie benötigt
+weder Ollama noch Internet. Opt-in-Tests mit dem tatsächlichen Modell:
 
-- Rules to obey by everyone, derived from legal documents (MARisk, DORA, EU AI Act, etc.)
-  Knowledge is structured into "books", each having a specific focus. Some books are relevant to everyone
-  in the company, others are only relevant for specific departments. When consulting the rule books, lookup always starts at the general
-  books, while the content may be further added onto going into the more specific ones.
-  Product-only questions can query website content directly without consulting the rule books.
-  Each book is divided into chapters, subchapters etc. 
-  Role: internal
-  Content: ~8000 documents
-  Ingestion interval: once a day is sufficient
-- Website content, including information about the products the bank offers.
-  Each product has its own site. The whole website content can be queried via SOLR.
-  Role: everyone
-  Content: ~8000 documents
-  Ingestion interval: once a day is sufficient
-- Intranet content, including information about departments inside the company.
-  Each department or topic has its own site. The content can be retrieved via REST.
-  Role: internal
-  Content: ~2000 documents
-  Ingestion interval: once a day is sufficient
+```sh
+uv run scripts/check_model.py
+uv run scripts/evaluate.py
+uv run scripts/check_sources.py
+```
 
-Specific knowledge (sensitive data):
+Diese Tests verwenden lokale Fixture-Quellen beziehungsweise ein synthetisches
+Werkzeug. Ihre Ergebnisse unter `docs/` überschreiben frühere Testausgaben.
+`check_sources.py` prüft die öffentlichen APIs; die beiden Modelltests sind keine
+Live-Quellenprüfung. Evaluationsrubrik: `tests/fixtures/evaluation.json`.
 
-- Completions of contracts for specific products, i.e. approval/denial decisions containing reasons for approval/denial.
-  Users will ask for reasons a specific contract was approved/denied in the past.
-  Role: department_a
-  Content: ~1000 documents
-  Ingestion interval: once a day is sufficient
-- Collections of documents that were uploaded by the user
-  Role: only the user
-  Content: ~100 documents per user
-  Ingestion interval: at every upload
-  for this poc, the documents can be provided in a separate folder, as a CLI tool should be build. The data should remain in the folder after ingestion.
+## Dokumentation
 
-The data source should be implemented one by one, starting with the general rules.
-Depending on the source, the retrieval scores should be evaluated against a "golden" set of questions and answers, which will then be provided as json (question, answer, source(s)).
-Golden-set citations will identify specific passages most of the time. Initial quality thresholds should be proposed in the plan and refined after baseline measurements.
-Questions can be targeted to a specific data source (vacation -> general rules, product information -> website), but it should be possible to ask questions that require multiple data sources (e.g. "check if the description of the product (website) matches the company guidelines regarding text formulations (intranet)", or "check if all requirements from (general rules) are met in this document (uploaded by the user)"). The agent should read the rules and assess for each rule.
-For rule-by-rule assessments, the agent should identify the applicable books and chapters and confirm the scope with the user before assessing each rule. Users may also specify the scope directly.
-Please suggest a retrieval approach for each data source. Include your reasoning, so that is is understandable why you favoured the approach compared to others.
+- [Aktueller Scope](POC-SCOPE.md)
+- [Umsetzungsplan](IMPLEMENTATION-PLAN.md)
+- [Umgebung und Skills](docs/SETUP.md)
+- [Validierung und bekannte Grenzen](docs/VALIDATION.md)
+- [Historische Anforderungen](docs/legacy/README.md) und [historischer Plan](PLAN.md)
 
-# Planned Data Sources
-
-These are planned, but out of scope for this POC:
-
-- JIRA
-- Confluence
-- Sharepoint
-
-# Data Ingestion
-
-Data can be preprocessed at night and stored in mysql/weaviate, if that helps to build a search index.
-Old data must be discarded. If the indexing fails, just keep the previous data (that is, only delete the old if the new has been ingested correctly).
-The original data must not be modified.
-
-# Musts
-
-- All data is read-only. 
-- The agents answers must be based on specific sources, which must be cited (source page/chapter/section)
-- Conversation support: The agent must answer follow up questions intelligently, that includes searching for new information if needed.
-- Conversations can be stored in memory in this POC.
-- Accuracy is more important than speed, but the users favor speedy solutions.
-- The application should be easily extensible with new data sources.
-- Evidence should be taken from the sources, if available. If the data is insufficient to answer the question, tell the user and ask how to proceed.
-
-# Logging
-
-For this POC, debugging logs may contain sensitive source passages and answers.
-Production requires stricter handling of sensitive data in logs; the production logging policy must be defined before deployment.
-
-# Tech Stack
-
-- linux (SLES 15) as operating system
-- podman as a container runtime
-- podman quadlets as a service manager
-- python >= 3.11
-- uv for project management
-- pytest for tests
-- fastapi for webservice
-- pydantic ai for the agent logic
-- docling for document processing
-- models (all hosted via vLLM):
-  - google gemma 4 31B
-  - snowflake embedding model
-  - qwen 3 reranker
-- mysql as a relational database (already available)
-- weaviate as a vector database, supporting semantic search/keyword search/hybrid search (already available)
+Die Anwendung bindet an Loopback und ist ein Einzelplatz-POC, kein Mehrbenutzersystem.
+Die Live-Quellen benötigen Internet; Modell und Oberfläche laufen lokal.
