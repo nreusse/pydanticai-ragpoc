@@ -7,7 +7,7 @@ Die abschließenden Modellergebnisse stehen in `evaluation-results.json`.
 ## Was bereits geprüft ist
 
 - Python 3.11 mit den Versionen aus uv.lock.
-- 25 bestandene Offline-Tests für Quellenformate, lesbare Auszüge, Quellenvalidierung,
+- 43 bestandene Offline-Tests für Quellenformate, lesbare Auszüge, Quellenvalidierung,
   Gesprächsverlauf, AG-UI/SSE, Busy-Zustand, Zeit-/Werkzeuglimits, Modellfehler
   und Aufräumen bei Abbruch. Tests verwenden FunctionModel/TestModel und MockTransport.
 - Ruff, Pyrefly einschließlich Prüfskripten und JavaScript-Syntaxprüfung.
@@ -116,7 +116,7 @@ Im Code dem Weg `app.py` → `ResearchService.stream` → `search_source`/`read_
 - Schreibende Werkzeuge: separate Freigabegrenze mit konkreten Aktionsparametern,
   erneuter Berechtigungsprüfung und Schutz gegen doppelte Ausführung.
 
-Es gibt keine Hintergrundjobs, dauerhaften Gespräche, Rollen oder Schreibwerkzeuge.
+Es gibt keine Hintergrundjobs, dauerhaften Gespräche, Anmeldung oder Schreibwerkzeuge.
 Abbruch beendet den direkten Lauf; nach Browser-Neuladen wird eine neue Unterhaltung
 begonnen. Es gibt ein aktives Modell pro Backend-Prozess; mehrere Worker würden
 diese Begrenzung umgehen und werden im POC nicht verwendet.
@@ -131,8 +131,8 @@ Referenz für den Denkmodus: [Ollama OpenAI-Kompatibilität](https://docs.ollama
 ## Dynamische Quellenwahl
 
 `GET /api/sources` liefert nur die durch `sources_for_user` erlaubten Quellen.
-Im Einzelplatz-POC sind dies alle registrierten Adapter; eine echte Anmeldung
-und Rollenverwaltung sind weiterhin nicht implementiert. `POST /api/chat` prüft
+Im Einzelplatz-POC erhält der lokale Nutzer alle Anwendungsrollen; eine echte Anmeldung
+ist weiterhin nicht implementiert; statische Rollen sind inzwischen vorhanden. `POST /api/chat` prüft
 `source_ids` gegen dieselbe serverseitige Grenze. Nicht verfügbare IDs ergeben
 403, eine leere Auswahl 422; ohne Auswahlfeld gelten alle erlaubten Quellen.
 Nur die ausgewählten Adapter gelangen in `RunData`. Dynamische Agentenanweisungen
@@ -145,3 +145,62 @@ ein Entzug während eines laufenden Jobs ist damit noch nicht umgesetzt.
 Zusätzliche Tests prüfen Quellenfilterung, abgelehnte Auswahl, gesperrte Lesezugriffe,
 getrennte Werkzeug-Schemas/Anweisungen und das Zurücksetzen des Gesprächskontexts.
 Die frühere Granite-Evaluation ist keine erneute Modellabnahme dieser Erweiterung.
+
+## NRW.BANK als SOLR-Quelle
+
+Der Live-Modus registriert zusätzlich `nrwbank` aus `nrwbank.py`.
+`search()` fragt ausschließlich `https://www.nrwbank.de/handleSolrSelect` ab:
+Suchbegriffe werden maskiert und als einzelne Textbegriffe übergeben. Feste Filter
+begrenzen die Suche auf deutsche, öffentlich markierte, nicht ausgeschlossene
+`containerpage`- und `localProduct`-Datensätze. Ausgewählte Felder vermeiden die
+Übernahme von CMS-Verwaltungsdaten und serialisierten Inhaltsblöcken.
+
+`read()` liest denselben Index über eine validierte UUID. Der Adapter prüft Typ,
+öffentliche Markierung, Ausschlusskennzeichen und zulässigen Link zusätzlich lokal.
+Förderprodukt-IDs werden in öffentliche Produkt-URLs übersetzt; Seitenlinks müssen
+auf zulässige deutsche HTML-Seiten verweisen. Andere CMS-Bausteine und PDF-Dateien
+sind zunächst ausgeschlossen. Nicht unterstützte Treffer werden ausgelassen.
+
+Belege bestehen aus Beschreibung und `content_de`, begrenzt durch das vorhandene
+Auszugslimit. Der Locator weist ausdrücklich auf SOLR-Indextext hin: Die Reihenfolge
+kann von der Webseite abweichen und die Indexfassung kann verzögert sein. Es gibt
+keine Garantie für vollständige Förderbedingungen im Auszug. Der Adapter ruft
+keine beliebigen Fundstellen-URLs ab und ergänzt keine HTML-Scraping-Abhängigkeit.
+
+Die Live-Quellenprüfung findet drei Treffer für „Digitalisierung“ und liest
+„KfW-Konsortialkredit Innovation und Digitalisierung“ mit öffentlichem Produktlink.
+Details stehen in `source-check.json`; `scripts/check_sources.py` enthält nun alle
+drei Live-Quellen. Der gespeicherte Fixture-Modus bleibt auf den bisherigen
+Kafka-/Buchdatensätzen beschränkt.
+
+Der Browser-Test mit ausschließlich ausgewählter NRW.BANK ist abgeschlossen:
+Die Frage nach einem Beispiel für Innovation/Digitalisierung löst eine SOLR-Suche
+und zwei Leseaufrufe aus. Granite nennt NRW.BANK.Invest Zukunft und verweist auf
+die gelesene Presseinformation vom 27. August 2025 als E1. Statusmeldungen,
+öffentlicher Link und aufklappbarer Indexauszug werden angezeigt. Die genannten
+historischen Zusagen und Beträge stehen im Auszug; die Formulierung des Modells
+ist teilweise zu gegenwartsbezogen. Dieser Einzeltest bestätigt den Datenfluss,
+nicht die Aktualität oder Vollständigkeit von Förderbedingungen.
+
+## Statische Anwendungsrollen
+
+`access.py` trennt Anwendungsrollen (`Role`) und Nutzer (`User`) von Quellenfreigaben
+(`SOURCE_ROLES`). Die Rolle `intern` erlaubt NRW.BANK; Wikipedia und Open Library
+benötigen keine Rolle. Unkonfigurierte Quellen sind grundsätzlich gesperrt.
+`current_user()` liefert im lokalen POC eine feste Identität mit sämtlichen
+Anwendungsrollen. Die Oberfläche zeigt diesen Nutzer und seine Rollen an.
+
+FastAPI löst den Nutzer serverseitig auf. `sources_for_user` filtert sowohl den
+Quellenkatalog als auch die für einen Chatlauf auswählbaren Adapter. Angaben wie
+`roles`, `user_id` oder `X-Roles` im Request gewähren keine Rechte. Die bestehende
+Laufbegrenzung, dynamischen Agentenanweisungen und Werkzeugprüfungen bleiben erhalten.
+
+Später muss `current_user` die authentifizierte Identität und deren verifizierte
+AD-Gruppen in Anwendungsrollen übersetzen. Eine freie Anmeldung, Rollenverwaltung,
+Gesprächszuordnung zu mehreren Nutzern und ein Berechtigungsentzug während eines
+laufenden Jobs sind noch nicht implementiert. Der POC bleibt ein lokales
+Einzelplatzsystem mit einer vertrauenswürdigen festen Identität.
+
+Die Tests prüfen reale Rollenfreigaben mit und ohne `intern`, den lokalen Nutzer,
+standardmäßig gesperrte neue Quellen sowie manipulierte Requests. Auch ohne explizite
+Quellenauswahl erhält ein Lauf ausschließlich erlaubte Adapter.

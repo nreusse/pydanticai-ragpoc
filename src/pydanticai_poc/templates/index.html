@@ -15,7 +15,7 @@
       <h1>Eine Frage. Nachvollziehbare Quellen.</h1>
       <p>Recherchiere in deinen ausgewählten Quellen. Sieh die Arbeitsschritte und prüfe die Fundstellen.</p>
       <div class="tags"><span>Nur lesend</span><span>{{ model }}</span>
-      <span>{% if source_mode == 'fixture' %}Demo · gespeicherte Daten{% else %}Öffentliche Live-Quellen{% endif %}</span></div>
+      <span id="user-context">Lokaler Nutzer</span><span>{% if source_mode == 'fixture' %}Demo · gespeicherte Daten{% else %}Öffentliche Live-Quellen{% endif %}</span></div>
     </section>
     <div class="workspace">
       <section class="chat" aria-label="Unterhaltung">

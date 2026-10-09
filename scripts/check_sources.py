@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 
+from pydanticai_poc.nrwbank import NRWBank
 from pydanticai_poc.sources import OpenLibrary, Source, Wikipedia
 
 
@@ -18,6 +19,7 @@ async def check() -> list[dict[str, object]]:
         sources: list[tuple[str, Source, str]] = [
             ("wikipedia", Wikipedia(client), "Franz Kafka"),
             ("openlibrary", OpenLibrary(client), "Die Verwandlung Kafka"),
+            ("nrwbank", NRWBank(client), "Digitalisierung"),
         ]
         for source_id, source, query in sources:
             try:

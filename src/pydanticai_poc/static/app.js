@@ -34,6 +34,18 @@ async function loadSources() {
   }
 }
 
+async function loadUser() {
+  try {
+    const response = await fetch("/api/me");
+    if (!response.ok) throw new Error("Benutzerkontext nicht verfügbar");
+    const user = await response.json();
+    $("user-context").textContent = `${user.display_name} · Rollen: ${user.roles.join(", ") || "keine"}`;
+  } catch {
+    $("user-context").textContent = "Benutzerkontext nicht verfügbar";
+  }
+}
+
+loadUser();
 loadSources();
 
 function message(role, text, error = false) {

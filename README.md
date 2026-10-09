@@ -1,7 +1,7 @@
 # Quellenwerk – lokaler Recherche-POC
 
 Eine kleine Webanwendung mit einem lesenden PydanticAI-Agenten. Sie durchsucht
-Wikipedia und Open Library, liest Fundstellen und beantwortet Fragen auf Deutsch
+Wikipedia, Open Library und NRW.BANK, liest Fundstellen und beantwortet Fragen auf Deutsch
 mit geprüften Quellenreferenzen. Bearbeitungsschritte erscheinen live über AG-UI/SSE.
 
 ## Start
@@ -23,6 +23,11 @@ Beispiel: „Wer war Franz Kafka?“ Danach: „In welcher Stadt wurde er gebore
 Für Buchmetadaten: „Finde Die Verwandlung von Kafka in Open Library.“ Open Library
 liefert keine Buchvolltexte. Wikipedia verwendet den Einleitungstext eines Artikels.
 
+NRW.BANK verwendet die öffentliche SOLR-Suche für deutsche Seiten und Förderprodukte.
+Die Belege sind gekürzte Indextexte, keine Live-Seitenfassung; einzelne CMS-Bausteine
+und PDFs sind derzeit ausgeschlossen. Im Formular kann die Quelle ausgewählt werden.
+Beispiel: „Welche Vorhaben unterstützt die NRW.BANK bei der Digitalisierung?“
+
 Für die ausdrücklich gekennzeichnete Offline-Quellendemo:
 
 ```sh
@@ -31,7 +36,7 @@ POC_SOURCE_MODE=fixture uv run pydanticai-poc
 
 Auch diese Demo benötigt das lokale Modell. Sie enthält nur kleine kuratierte
 Beispieldaten über Kafka und Die Verwandlung sowie einen manipulativen Testdatensatz;
-sie ersetzt keine Live-Quellensuche. Gespräche gehen bei Neustart verloren.
+sie ersetzt keine Live-Quellensuche. NRW.BANK ist nur im Live-Modus registriert. Gespräche gehen bei Neustart verloren.
 
 ## Architektur erklären
 
@@ -45,8 +50,13 @@ sie ersetzt keine Live-Quellensuche. Gespräche gehen bei Neustart verloren.
    Die Oberfläche zeigt Statusmeldungen und die validierte Antwort samt Auszügen.
 
 Die Quellenwahl im Formular wird für jeden Lauf mit den serverseitig erlaubten
-Quellen abgeglichen. `sources_for_user` in `app.py` ist die spätere Anbindung an
-die Anmeldung; heute darf der lokale Nutzer alle registrierten Quellen sehen.
+Quellen abgeglichen. `access.py` definiert statische Anwendungsrollen und
+Quellenfreigaben: Wikipedia und Open Library sind allgemein zugänglich, NRW.BANK
+erfordert `intern`. Der lokale Nutzer erhält alle definierten Rollen. Neue Quellen
+benötigen einen expliziten Eintrag in `SOURCE_ROLES`. `current_user()` wird später
+durch eine authentifizierte Identität mit AD-Gruppen-Mapping ersetzt; die
+Quellenprüfung in `sources_for_user` bleibt bestehen. Es gibt noch keine Anmeldung
+oder Benutzerumschaltung.
 Prompt, Werkzeug-Schema und Python-Zugriff verwenden nur die wirksame Auswahl.
 Bei geänderter Auswahl wird der Antwortkontext zurückgesetzt.
 

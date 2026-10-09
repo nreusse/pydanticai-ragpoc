@@ -20,6 +20,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.ui.ag_ui import AGUIEventStream
 from starlette.background import BackgroundTask
 
+from .access import User, can_access_source, current_user
+from .nrwbank import NRWBank
 from .research import ResearchService, RunData, build_agent
 from .settings import Settings
 from .sources import OpenLibrary, Source, Wikipedia, fixture_sources
@@ -52,13 +54,12 @@ def service_from(request: Request) -> ResearchService:
 Service = Annotated[ResearchService, Depends(service_from)]
 
 
-def sources_for_user(research: Service) -> dict[str, Source]:
-    """Server-side permission boundary; the local POC user can access all sources.
+CurrentUser = Annotated[User, Depends(current_user)]
 
-    Later resolve an authenticated user here and return only authorized adapters.
-    Never take permissions or a user identity from the chat payload.
-    """
-    return dict(research.sources)
+
+def sources_for_user(research: Service, user: CurrentUser) -> dict[str, Source]:
+    """Apply server-owned roles before source selection and agent execution."""
+    return {key: source for key, source in research.sources.items() if can_access_source(user, key)}
 
 
 AllowedSources = Annotated[dict[str, Source], Depends(sources_for_user)]
@@ -92,6 +93,7 @@ def create_app(settings: Settings | None = None, service: ResearchService | None
                 else {
                     "wikipedia": Wikipedia(source_client),
                     "openlibrary": OpenLibrary(source_client),
+                    "nrwbank": NRWBank(source_client),
                 }
             )
             async with agent:
@@ -120,6 +122,14 @@ def create_app(settings: Settings | None = None, service: ResearchService | None
             source_mode=research.settings.source_mode,
             busy=research.active_run is not None,
         )
+
+    @app.get("/api/me")
+    async def me(user: CurrentUser) -> dict[str, object]:
+        return {
+            "id": user.id,
+            "display_name": user.display_name,
+            "roles": sorted(role.value for role in user.roles),
+        }
 
     @app.get("/api/sources")
     async def available_sources(allowed: AllowedSources) -> list[dict[str, str]]:
